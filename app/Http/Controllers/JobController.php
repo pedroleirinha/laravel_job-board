@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Job;
+use GuzzleHttp\Psr7\Query;
 use Illuminate\Http\Request;
 
 class JobController extends Controller
@@ -10,9 +11,31 @@ class JobController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return view('job.index', ["jobs" => Job::all()]);
+        $jobs = Job::query();
+
+        $jobs->when(request('search'), function ($query) {
+            $query->where(function ($query) {
+                $search = request('search');
+                $query->whereLike('title', "%$search%")
+                    ->orWhereLike('description', "%$search%");
+            });
+        });
+        $jobs->when(request('min_salary'), function ($query) {
+            $query->where('salary', ">=", request('min_salary'));
+        });
+        $jobs->when(request('max_salary'), function ($query) {
+            $query->where('salary', "<=", request('max_salary'));
+        });
+        $jobs->when(request('experience'), function ($query) {
+            $query->whereLike('experience', request('experience'));
+        });
+        $jobs->when(request('category'), function ($query) {
+            $query->whereLike('category', request('category'));
+        });
+
+        return view('job.index', ["jobs" => $jobs->get()]);
     }
 
     /**
